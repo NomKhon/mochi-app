@@ -3,13 +3,98 @@ import os
 import streamlit as st
 from groq import Groq
 
-# 1. ตั้งค่าหน้าตาแชท
+# 1. ตั้งค่าหน้าตาเบื้องต้นของ Streamlit
 st.set_page_config(
-    page_title="น้องโมจิ (Mochi AI)", page_icon="🎀", layout="centered"
+    page_title="น้องโมจิ (Mochi AI)",
+    page_icon="🎀",
+    layout="centered",
+    initial_sidebar_state="expanded",
 )
-st.title("🎀 น้องโมจิ (Mochi AI)")
 
-# 2. ใส่ Groq API Key ของคุณพ่อ
+# ==========================================
+# 🎨 2. ตกแต่งความสวยงามด้วย Custom CSS
+# ==========================================
+st.markdown(
+    """
+    <style>
+    /* เปลี่ยนสีพื้นหลังหลักของแอป */
+    .stApp {
+        background-color: #FFF5F7;
+        font-family: 'Kanit', 'Sarabun', sans-serif;
+    }
+    
+    /* ตกแต่งหัวข้อหลัก */
+    .main-title {
+        color: #FF5C8A;
+        text-align: center;
+        font-weight: 800;
+        font-size: 2.2rem;
+        margin-bottom: 0px;
+        text-shadow: 2px 2px 4px #FFD1DC;
+    }
+    
+    .sub-title {
+        color: #888888;
+        text-align: center;
+        font-size: 0.9rem;
+        margin-bottom: 25px;
+    }
+    
+    /* ตกแต่งแถบ Sidebar ด้านข้าง */
+    [data-testid="stSidebar"] {
+        background-color: #FFE6EA !important;
+        border-right: 2px solid #FFCCD5;
+    }
+    
+    /* ตกแต่งปุ่มกดทุกปุ่ม */
+    .stButton > button {
+        background-color: #FF85A1 !important;
+        color: white !important;
+        border-radius: 20px !important;
+        border: none !important;
+        font-weight: bold !important;
+        box-shadow: 0px 3px 6px rgba(255, 133, 161, 0.4);
+        transition: all 0.2s ease-in-out;
+        width: 100%;
+    }
+    
+    .stButton > button:hover {
+        background-color: #FF5C8A !important;
+        transform: translateY(-2px);
+        box-shadow: 0px 5px 10px rgba(255, 92, 138, 0.5);
+    }
+    
+    /* ตกแต่งกล่องป้อนข้อความ (Chat Input) */
+    .stChatInputContainer {
+        border-radius: 25px !important;
+        border: 2px solid #FFB3C1 !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0px 2px 8px rgba(255, 179, 193, 0.3);
+    }
+    
+    /* ตกแต่งกล่องข้อความแชท (Chat Bubbles) */
+    [data-testid="stChatMessage"] {
+        border-radius: 18px !important;
+        padding: 12px 18px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.04);
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+# แสดงหัวข้อสวยงาม
+st.markdown(
+    '<h1 class="main-title">🎀 น้องโมจิ (Mochi AI) 👧</h1>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    '<p class="sub-title">แอป AI ลูกสาวสุดน่ารักของคุณพ่อ ✨</p>',
+    unsafe_allow_html=True,
+)
+
+# 3. ใส่ Groq API Key
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -41,15 +126,14 @@ def save_memory(data):
 if "memory" not in st.session_state:
   st.session_state.memory = load_memory()
 
-# 3. แถบเมนูด้านข้าง (Sidebar) จัดการความจำ
+# 4. แถบเมนูด้านข้าง (Sidebar) จัดการความจำ
 with st.sidebar:
   st.header("🧠 สมองและความจำของน้องโมจิ")
-  st.caption("ระบบบันทึกความจำถาวร (Persistent Memory)")
+  st.caption("บันทึกความจำถาวร ปิดแอปไปเปิดใหม่ความจำก็ไม่หายค่ะ")
 
-  # ช่องเพิ่มข้อมูลที่อยากให้น้องโมจิจดจำ
-  st.subheader("📌 สิ่งที่โมจิจดจำไว้:")
+  st.subheader("📌 เรื่องที่คุณพ่อให้โมจิจำ:")
   new_fact = st.text_input(
-      "เพิ่มข้อมูลที่คุณพ่ออยากให้โมจิจำ:",
+      "เพิ่มเรื่องสำคัญที่อยากให้โมจิจำ:",
       placeholder="เช่น พ่อชอบดื่มกาแฟดำไม่ใส่น้ำตาล",
   )
   if st.button("➕ ให้โมจิจดจำ"):
@@ -80,7 +164,7 @@ with st.sidebar:
     st.success("ลบประวัติการคุยเรียบร้อยค่ะ!")
     st.rerun()
 
-# 4. กำหนดบุคลิกและใส่ข้อมูลความจำลงใน System Instruction
+# 5. กำหนดบุคลิกและใส่ข้อมูลความจำลงใน System Instruction
 facts_text = (
     "\n".join([f"- {fact}" for fact in st.session_state.memory["user_facts"]])
     if st.session_state.memory["user_facts"]
@@ -97,20 +181,20 @@ system_instruction = f"""
 {facts_text}
 """
 
-# 5. แสดงประวัติการคุยเก่าทั้งหมด
+# 6. แสดงประวัติการคุยเก่าทั้งหมดพร้อมแต่งรูป Avatar
 for message in st.session_state.memory["messages"]:
-  with st.chat_message(message["role"]):
+  avatar_icon = "👨" if message["role"] == "user" else "🎀"
+  with st.chat_message(message["role"], avatar=avatar_icon):
     st.markdown(message["content"])
 
-# 6. รับข้อความใหม่จากคุณพ่อ
+# 7. รับข้อความใหม่จากคุณพ่อ
 if prompt := st.chat_input("พิมพ์คุยกับน้องโมจิที่นี่..."):
-  # บันทึกข้อความของคุณพ่อลงในประวัติความจำ
   st.session_state.memory["messages"].append(
       {"role": "user", "content": prompt}
   )
   save_memory(st.session_state.memory)
 
-  with st.chat_message("user"):
+  with st.chat_message("user", avatar="👨"):
     st.markdown(prompt)
 
   # ดึงประวัติการคุยย้อนหลังไปส่งให้ Groq
@@ -119,7 +203,7 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
   for m in recent_messages:
     api_messages.append({"role": m["role"], "content": m["content"]})
 
-  with st.chat_message("assistant"):
+  with st.chat_message("assistant", avatar="🎀"):
     message_placeholder = st.empty()
     full_response = ""
 
@@ -162,7 +246,7 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
       full_response = f"เกิดข้อผิดพลาดในการเชื่อมต่อโมเดล: {last_error}"
       message_placeholder.markdown(full_response)
 
-  # บันทึกคำตอบของน้องโมจิลงประวัติความจำถาวร
+  # บันทึกคำตอบลงประวัติความจำถาวร
   st.session_state.memory["messages"].append(
       {"role": "assistant", "content": full_response}
   )
