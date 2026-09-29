@@ -136,25 +136,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ==========================================
-# 3. จัดการ Groq API Key และตั้งค่า Client
-# ==========================================
-# ดึง API Key จาก st.secrets หรือ Environment Variable
-GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
-
-if not GROQ_API_KEY:
-  st.error("⚠️ ไม่พบ Groq API Key! กรุณาตั้งค่าใน Secrets ของ Streamlit นะคะ")
-  st.stop()
-
+# 3. ใส่ Groq API Key
+GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
 MEMORY_FILE = "mochi_memory.json"
-
-# รายชื่อโมเดลของ Groq ที่เสถียรและเปิดใช้งานอยู่จริง
-CANDIDATE_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant",
-]
 
 
 def load_memory():
@@ -274,7 +260,7 @@ with st.sidebar:
         save_memory(st.session_state.memory)
         st.rerun()
 
-      if col2.button("🗑️️", key=f"del_{c_id}"):
+      if col2.button("🗑️", key=f"del_{c_id}"):
         del st.session_state.memory["chats"][c_id]
         if st.session_state.memory["current_chat_id"] == c_id:
           if st.session_state.memory["chats"]:
@@ -366,10 +352,18 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     message_placeholder = st.empty()
     full_response = ""
 
+    candidate_models = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+        "openai/gpt-oss-20b",
+    ]
+
     completion = None
     last_error = None
 
-    for model_id in CANDIDATE_MODELS:
+    for model_id in candidate_models:
       try:
         completion = client.chat.completions.create(
             model=model_id,
