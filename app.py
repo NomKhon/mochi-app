@@ -18,12 +18,14 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* พื้นหลังหลักสไตล์ Gemini (#131314) */
     .stApp {
         background-color: #131314 !important;
         color: #E3E3E3 !important;
         font-family: 'Google Sans', 'Kanit', 'Sarabun', sans-serif;
     }
     
+    /* แสดงและแต่งปุ่มเมนู 2-3 ขีด (Hamburger Menu) มุมซ้ายบน */
     header[data-testid="stHeader"] {
         background-color: transparent !important;
         z-index: 99999 !important;
@@ -40,6 +42,7 @@ st.markdown(
         box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
     }
     
+    /* หัวข้อหลักไล่เฉดสีเอกลักษณ์ Gemini (Blue-Purple-Pink) */
     .gemini-title {
         background: linear-gradient(90deg, #4285F4 0%, #9B72CB 50%, #D96570 100%);
         -webkit-background-clip: text;
@@ -59,6 +62,7 @@ st.markdown(
         margin-bottom: 20px;
     }
     
+    /* แถบ Sidebar สไตล์ Gemini (#1E1F20) */
     [data-testid="stSidebar"] {
         background-color: #1E1F20 !important;
         border-right: 1px solid #282A2C !important;
@@ -67,6 +71,7 @@ st.markdown(
         color: #E3E3E3 !important;
     }
     
+    /* ปุ่มกดใน Sidebar */
     .stButton > button {
         background-color: #282A2C !important;
         color: #E3E3E3 !important;
@@ -83,12 +88,14 @@ st.markdown(
         color: #FFFFFF !important;
     }
     
+    /* ช่องกรอกข้อความค้นหา */
     div[data-baseweb="input"] {
         background-color: #131314 !important;
         border-color: #444746 !important;
         border-radius: 20px !important;
     }
     
+    /* กล่องข้อความแชท สไตล์ Gemini Seamless */
     [data-testid="stChatMessage"] {
         background-color: transparent !important;
         border: none !important;
@@ -96,6 +103,7 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
+    /* บังคับสีตัวหนังสือในแชทให้ขาวสว่าง ชัดเจน 100% */
     [data-testid="stChatMessage"] p, 
     [data-testid="stChatMessage"] span, 
     [data-testid="stChatMessage"] div {
@@ -104,6 +112,7 @@ st.markdown(
         line-height: 1.6 !important;
     }
     
+    /* ช่องพิมพ์ข้อความด้านล่างทรงแคปซูลแบบ Gemini */
     .stChatInputContainer {
         border-radius: 28px !important;
         border: 1px solid #444746 !important;
@@ -127,62 +136,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3. ตั้งค่า Groq Client
-GROQ_API_KEY = os.environ.get(
-    "GROQ_API_KEY",
-    st.secrets.get(
-        "GROQ_API_KEY",
-        "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",
-    ),
-)
+# ==========================================
+# 3. จัดการ Groq API Key และตั้งค่า Client
+# ==========================================
+# ดึง API Key จาก st.secrets หรือ Environment Variable
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
+
+if not GROQ_API_KEY:
+  st.error("⚠️ ไม่พบ Groq API Key! กรุณาตั้งค่าใน Secrets ของ Streamlit นะคะ")
+  st.stop()
+
 client = Groq(api_key=GROQ_API_KEY)
 
 MEMORY_FILE = "mochi_memory.json"
 
-# รายชื่อโมเดลหลักที่เสถียรที่สุดของ Groq (ใชเฉพาะรุ่น Production)
+# รายชื่อโมเดลของ Groq ที่เสถียรและเปิดใช้งานอยู่จริง
 CANDIDATE_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768",
 ]
-
-
-# ฟังก์ชันสร้าง System Instruction จากความจำถาวรแบบศูนย์กลาง
-def build_system_instruction(memory):
-  facts = memory.get("user_facts", [])
-  facts_text = (
-      "\n".join([f"- {fact}" for fact in facts])
-      if facts
-      else "ยังไม่มีข้อมูลเพิ่มเติม"
-  )
-  return f"""
-คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
-- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
-- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
-- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
-- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
-
-[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
-{facts_text}
-"""
-
-
-# ฟังก์ชันกลางสำหรับเรียกใช้งาน Groq API แบบสลับโมเดลอัตโนมัติ
-def call_groq_api(client, messages, temperature=0.7, stream=False):
-  last_err = None
-  for model_id in CANDIDATE_MODELS:
-    try:
-      res = client.chat.completions.create(
-          model=model_id,
-          messages=messages,
-          temperature=temperature,
-          stream=stream,
-      )
-      return res, None
-    except Exception as e:
-      last_err = e
-      continue
-  return None, last_err
 
 
 def load_memory():
@@ -224,39 +196,6 @@ def save_memory(data):
       json.dump(data, f, ensure_ascii=False, indent=2)
   except Exception as e:
     st.error(f"ไม่สามารถบันทึกความจำได้: {e}")
-
-
-# 🧠 ระบบดึงข้อมูลสำคัญเข้าความจำถาวรให้อัตโนมัติ (ทำความสะอาดข้อความ)
-def auto_extract_fact(user_text, client, memory):
-  try:
-    messages = [{
-        "role": "user",
-        "content": (
-            "วิเคราะห์ว่าข้อความนี้เป็นการบอกข้อมูลส่วนตัว ตัวตน สิ่งที่ชอบ"
-            " หรือความลับของผู้ใช้หรือไม่ เช่น 'พ่อชอบสีม่วง',"
-            " 'พ่อชอบกินกาแฟดำ' หากใช่ ให้สรุปประโยคสั้นๆ 1 ประโยค เช่น"
-            " 'คุณพ่อชอบสีม่วง' หากไม่ใช่ข้อมูลส่วนตัวเลย ให้ตอบ 'NONE'"
-            f" ข้อความ: '{user_text}'"
-        ),
-    }]
-    res, err = call_groq_api(
-        client, messages, temperature=0.1, stream=False
-    )
-    if res:
-      fact = res.choices[0].message.content.strip()
-      fact = fact.strip('"' "'`•- ")
-      if (
-          fact
-          and "NONE" not in fact.upper()
-          and len(fact) < 60
-          and len(fact) > 3
-      ):
-        if fact not in memory["user_facts"]:
-          memory["user_facts"].append(fact)
-          return True
-  except Exception:
-    pass
-  return False
 
 
 if "memory" not in st.session_state:
@@ -335,7 +274,7 @@ with st.sidebar:
         save_memory(st.session_state.memory)
         st.rerun()
 
-      if col2.button("🗑️", key=f"del_{c_id}"):
+      if col2.button("🗑️️", key=f"del_{c_id}"):
         del st.session_state.memory["chats"][c_id]
         if st.session_state.memory["current_chat_id"] == c_id:
           if st.session_state.memory["chats"]:
@@ -353,13 +292,11 @@ with st.sidebar:
 
   st.divider()
 
-  with st.expander("🧠 ความจำถาวรของโมจิ (Auto)"):
+  with st.expander("🧠 เรื่องที่คุณพ่อให้โมจิจำ"):
     new_fact = st.text_input(
-        "เพิ่มข้อมูลเอง:",
-        placeholder="เช่น พ่อชอบกินกาแฟดำ",
-        key="add_fact_input",
+        "เพิ่มข้อมูล:", placeholder="เช่น พ่อชอบกินกาแฟดำ", key="add_fact_input"
     )
-    if st.button("➕ บันทึกเพิ่ม", use_container_width=True):
+    if st.button("➕ จำเรื่องนี้", use_container_width=True):
       if new_fact.strip():
         st.session_state.memory["user_facts"].append(new_fact.strip())
         save_memory(st.session_state.memory)
@@ -387,6 +324,22 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+facts_text = (
+    "\n".join([f"- {fact}" for fact in st.session_state.memory["user_facts"]])
+    if st.session_state.memory["user_facts"]
+    else "ยังไม่มีข้อมูลเพิ่มเติม"
+)
+
+system_instruction = f"""
+คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
+- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
+- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
+- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
+
+[ข้อมูลสำคัญที่คุณพ่อเคยบอกไว้ และน้องโมจิต้องจดจำให้แม่นยำ]:
+{facts_text}
+"""
+
 for message in current_chat["messages"]:
   avatar_icon = "👨" if message["role"] == "user" else "✨"
   with st.chat_message(message["role"], avatar=avatar_icon):
@@ -399,16 +352,10 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     )
 
   current_chat["messages"].append({"role": "user", "content": prompt})
-
-  # แอบสกัดความจำใหม่อัตโนมัติ
-  auto_extract_fact(prompt, client, st.session_state.memory)
   save_memory(st.session_state.memory)
 
   with st.chat_message("user", avatar="👨"):
     st.markdown(prompt)
-
-  # เรียกใช้ System Instruction ล่าสุดแบบคลีน
-  system_instruction = build_system_instruction(st.session_state.memory)
 
   recent_messages = current_chat["messages"][-20:]
   api_messages = [{"role": "system", "content": system_instruction}]
@@ -419,9 +366,21 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     message_placeholder = st.empty()
     full_response = ""
 
-    completion, last_error = call_groq_api(
-        client, api_messages, temperature=0.7, stream=True
-    )
+    completion = None
+    last_error = None
+
+    for model_id in CANDIDATE_MODELS:
+      try:
+        completion = client.chat.completions.create(
+            model=model_id,
+            messages=api_messages,
+            temperature=0.7,
+            stream=True,
+        )
+        break
+      except Exception as e:
+        last_error = e
+        continue
 
     if completion:
       try:
