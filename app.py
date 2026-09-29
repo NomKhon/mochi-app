@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 import streamlit as st
 from groq import Groq
 
@@ -8,7 +9,7 @@ st.set_page_config(
     page_title="Mochi AI",
     page_icon="✨",
     layout="centered",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ==========================================
@@ -24,6 +25,14 @@ st.markdown(
         font-family: 'Google Sans', 'Kanit', 'Sarabun', sans-serif;
     }
     
+    /* แต่งปุ่ม 2-3 ขีด (Hamburger Toggle) ด้านซ้ายบน */
+    [data-testid="collapsedControl"], [data-testid="stSidebarCollapseButton"] {
+        color: #E3E3E3 !important;
+        background-color: #1E1F20 !important;
+        border-radius: 50% !important;
+        padding: 4px !important;
+    }
+    
     /* หัวข้อหลักไล่เฉดสีเอกลักษณ์ Gemini (Blue-Purple-Pink) */
     .gemini-title {
         background: linear-gradient(90deg, #4285F4 0%, #9B72CB 50%, #D96570 100%);
@@ -31,18 +40,17 @@ st.markdown(
         -webkit-text-fill-color: transparent;
         text-align: center;
         font-weight: 700;
-        font-size: 2.3rem;
-        margin-top: 10px;
-        margin-bottom: 4px;
+        font-size: 2.2rem;
+        margin-top: 5px;
+        margin-bottom: 2px;
         letter-spacing: -0.5px;
     }
     
     .gemini-subtitle {
         color: #8E918F !important;
         text-align: center;
-        font-size: 0.9rem;
-        margin-bottom: 28px;
-        font-weight: 400;
+        font-size: 0.85rem;
+        margin-bottom: 20px;
     }
     
     /* แถบ Sidebar สไตล์ Gemini (#1E1F20) */
@@ -54,16 +62,15 @@ st.markdown(
         color: #E3E3E3 !important;
     }
     
-    /* ปุ่มกดสไตล์ Gemini (Dark Pill Button) */
+    /* ปุ่มกดใน Sidebar */
     .stButton > button {
         background-color: #282A2C !important;
         color: #E3E3E3 !important;
         border-radius: 20px !important;
         border: 1px solid #444746 !important;
-        padding: 8px 16px !important;
+        padding: 6px 14px !important;
         font-weight: 500 !important;
         transition: all 0.2s ease;
-        width: 100%;
     }
     
     .stButton > button:hover {
@@ -72,19 +79,19 @@ st.markdown(
         color: #FFFFFF !important;
     }
     
-    /* ช่องกรอกข้อความใน Sidebar */
+    /* ช่องกรอกข้อความค้นหา */
     div[data-baseweb="input"] {
         background-color: #131314 !important;
         border-color: #444746 !important;
-        border-radius: 12px !important;
+        border-radius: 20px !important;
     }
     
     /* กล่องข้อความแชท สไตล์ Gemini Seamless */
     [data-testid="stChatMessage"] {
         background-color: transparent !important;
         border: none !important;
-        padding: 8px 0px !important;
-        margin-bottom: 12px !important;
+        padding: 6px 0px !important;
+        margin-bottom: 8px !important;
     }
 
     /* บังคับสีตัวหนังสือในแชทให้ขาวสว่าง ชัดเจน 100% */
@@ -113,11 +120,6 @@ st.markdown(
         color: #E3E3E3 !important;
     }
     
-    .stChatInputContainer textarea::placeholder {
-        color: #8E918F !important;
-    }
-    
-    /* ซ่อนลายน้ำและส่วนเกินของ Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -126,35 +128,49 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# แสดงหัวข้อ Gemini Style
-st.markdown(
-    '<h1 class="gemini-title">✨ Mochi AI</h1>', unsafe_allow_html=True
-)
-st.markdown(
-    '<p class="gemini-subtitle">สวัสดีค่ะคุณพ่อ มีอะไรให้โมจิช่วยไหมคะ?</p>',
-    unsafe_allow_html=True,
-)
-
 # 3. ใส่ Groq API Key
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
-# ชื่อไฟล์เก็บความจำถาวร
 MEMORY_FILE = "mochi_memory.json"
 
 
-# ฟังก์ชันโหลดความจำจากไฟล์
+# ฟังก์ชันโหลดและปรับโครงสร้างระบบความจำหลายแชต
 def load_memory():
   if os.path.exists(MEMORY_FILE):
     try:
       with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data = json.load(f)
+        # ปรับโครงสร้างข้อมูลเก่าให้รองรับระบบหลายแชตอัตโนมัติ
+        if "chats" not in data:
+          old_messages = data.get("messages", [])
+          default_id = str(uuid.uuid4())[:8]
+          data["chats"] = {
+              default_id: {
+                  "title": (
+                      old_messages[0]["content"][:20]
+                      if old_messages
+                      else "แชทแรก"
+                  ),
+                  "messages": old_messages,
+              }
+          }
+          data["current_chat_id"] = default_id
+          if "messages" in data:
+            del data["messages"]
+        return data
     except Exception:
       pass
-  return {"user_facts": [], "messages": []}
+
+  # ถ้าไม่มีไฟล์ สร้างโครงสร้างใหม่
+  default_id = str(uuid.uuid4())[:8]
+  return {
+      "user_facts": [],
+      "chats": {default_id: {"title": "แชทใหม่", "messages": []}},
+      "current_chat_id": default_id,
+  }
 
 
-# ฟังก์ชันบันทึกความจำลงไฟล์
 def save_memory(data):
   try:
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
@@ -163,49 +179,139 @@ def save_memory(data):
     st.error(f"ไม่สามารถบันทึกความจำได้: {e}")
 
 
-# โหลดความจำเมื่อเปิดแอป
 if "memory" not in st.session_state:
   st.session_state.memory = load_memory()
 
-# 4. แถบเมนูด้านข้าง (Sidebar) จัดการความจำ
+# ตรวจสอบความถูกต้องของ active chat
+chats_dict = st.session_state.memory.get("chats", {})
+if st.session_state.memory.get("current_chat_id") not in chats_dict:
+  if chats_dict:
+    st.session_state.memory["current_chat_id"] = list(chats_dict.keys())[0]
+  else:
+    new_id = str(uuid.uuid4())[:8]
+    st.session_state.memory["chats"] = {
+        new_id: {"title": "แชทใหม่", "messages": []}
+    }
+    st.session_state.memory["current_chat_id"] = new_id
+
+current_chat_id = st.session_state.memory["current_chat_id"]
+current_chat = st.session_state.memory["chats"][current_chat_id]
+
+# ==========================================
+# 4. แถบเมนูด้านข้าง (Sidebar) สไตล์ Gemini
+# ==========================================
 with st.sidebar:
-  st.header("🧠 ความจำของโมจิ")
-  st.caption("ระบบบันทึกความจำส่วนตัว")
+  # 1. ปุ่มแชทใหม่
+  if st.button("➕  แชทใหม่", use_container_width=True):
+    new_id = str(uuid.uuid4())[:8]
+    st.session_state.memory["chats"][new_id] = {
+        "title": "แชทใหม่",
+        "messages": [],
+    }
+    st.session_state.memory["current_chat_id"] = new_id
+    save_memory(st.session_state.memory)
+    st.rerun()
 
-  st.subheader("📌 เรื่องที่คุณพ่อให้โมจิจำ:")
-  new_fact = st.text_input(
-      "เพิ่มเรื่องสำคัญที่อยากให้โมจิจำ:",
-      placeholder="เช่น พ่อชอบดื่มกาแฟดำ",
+  st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
+  # 2. ช่องค้นหาแชท
+  search_query = st.text_input(
+      "🔍 ค้นหาแชท",
+      placeholder="ค้นหาบทสนทนา...",
+      label_visibility="collapsed",
   )
-  if st.button("➕ บันทึกความจำ"):
-    if new_fact.strip():
-      st.session_state.memory["user_facts"].append(new_fact.strip())
-      save_memory(st.session_state.memory)
-      st.success("โมจิจำเรียบร้อยแล้วค่ะ ✨")
-      st.rerun()
 
-  # แสดงรายการสิ่งที่โมจิจำได้พร้อมปุ่มลบ
-  if st.session_state.memory["user_facts"]:
-    for i, fact in enumerate(st.session_state.memory["user_facts"]):
-      col1, col2 = st.columns([0.85, 0.15])
-      col1.text(f"• {fact}")
-      if col2.button("❌", key=f"del_fact_{i}"):
-        st.session_state.memory["user_facts"].pop(i)
+  st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+  st.caption("🕒 ล่าสุด")
+
+  # 3. แสดงรายการแชทล่าสุด
+  all_chats = st.session_state.memory["chats"]
+  filtered_chats = {}
+
+  for c_id, c_data in all_chats.items():
+    title = c_data.get("title", "แชทไม่มีชื่อ")
+    msg_text = " ".join([m["content"] for m in c_data.get("messages", [])])
+    if (
+        not search_query
+        or search_query.lower() in title.lower()
+        or search_query.lower() in msg_text.lower()
+    ):
+      filtered_chats[c_id] = c_data
+
+  if not filtered_chats:
+    st.caption("ไม่พบแชทที่ค้นหา")
+  else:
+    # เรียงลำดับเอาแชทใหม่อยู่บนสุด
+    for c_id in list(filtered_chats.keys())[::-1]:
+      c_data = filtered_chats[c_id]
+      title = c_data.get("title", "แชทใหม่")
+      display_title = title if len(title) <= 18 else title[:16] + "..."
+
+      is_active = c_id == current_chat_id
+      btn_prefix = "✨ " if is_active else "💬 "
+
+      col1, col2 = st.columns([0.8, 0.2])
+      if col1.button(
+          f"{btn_prefix}{display_title}",
+          key=f"select_{c_id}",
+          use_container_width=True,
+      ):
+        st.session_state.memory["current_chat_id"] = c_id
         save_memory(st.session_state.memory)
         st.rerun()
-  else:
-    st.info("ยังไม่มีข้อมูล พิมพ์เพิ่มด้านบนได้เลยค่ะ")
+
+      if col2.button("🗑️", key=f"del_{c_id}"):
+        del st.session_state.memory["chats"][c_id]
+        if st.session_state.memory["current_chat_id"] == c_id:
+          if st.session_state.memory["chats"]:
+            st.session_state.memory["current_chat_id"] = list(
+                st.session_state.memory["chats"].keys()
+            )[0]
+          else:
+            new_id = str(uuid.uuid4())[:8]
+            st.session_state.memory["chats"] = {
+                new_id: {"title": "แชทใหม่", "messages": []}
+            }
+            st.session_state.memory["current_chat_id"] = new_id
+        save_memory(st.session_state.memory)
+        st.rerun()
 
   st.divider()
 
-  # ปุ่มลบประวัติการคุยทั้งหมด
-  if st.button("🗑 ล้างประวัติการคุยทั้งหมด"):
-    st.session_state.memory["messages"] = []
-    save_memory(st.session_state.memory)
-    st.success("ล้างประวัติเรียบร้อยค่ะ!")
-    st.rerun()
+  # 4. ส่วนความจำถาวรของโมจิ
+  with st.expander("🧠 เรื่องที่คุณพ่อให้โมจิจำ"):
+    new_fact = st.text_input(
+        "เพิ่มข้อมูล:", placeholder="เช่น พ่อชอบกินกาแฟดำ", key="add_fact_input"
+    )
+    if st.button("➕ จำเรื่องนี้", use_container_width=True):
+      if new_fact.strip():
+        st.session_state.memory["user_facts"].append(new_fact.strip())
+        save_memory(st.session_state.memory)
+        st.success("โมจิจำไว้แล้วค่ะ ✨")
+        st.rerun()
 
-# 5. กำหนดบุคลิกและใส่ข้อมูลความจำลงใน System Instruction
+    if st.session_state.memory["user_facts"]:
+      st.markdown("---")
+      for i, fact in enumerate(st.session_state.memory["user_facts"]):
+        fc1, fc2 = st.columns([0.8, 0.2])
+        fc1.caption(f"• {fact}")
+        if fc2.button("❌", key=f"d_fact_{i}"):
+          st.session_state.memory["user_facts"].pop(i)
+          save_memory(st.session_state.memory)
+          st.rerun()
+
+# ==========================================
+# 5. แสดงส่วนหลักแชท (Main Chat View)
+# ==========================================
+st.markdown(
+    '<h1 class="gemini-title">✨ Mochi AI</h1>', unsafe_allow_html=True
+)
+st.markdown(
+    '<p class="gemini-subtitle">สวัสดีค่ะคุณพ่อ มีอะไรให้โมจิช่วยไหมคะ?</p>',
+    unsafe_allow_html=True,
+)
+
+# บุคลิกและจดจำข้อมูลสำคัญ
 facts_text = (
     "\n".join([f"- {fact}" for fact in st.session_state.memory["user_facts"]])
     if st.session_state.memory["user_facts"]
@@ -222,23 +328,27 @@ system_instruction = f"""
 {facts_text}
 """
 
-# 6. แสดงประวัติการคุยเก่าทั้งหมด (ใช้ไอคอน ✨ แบบ Gemini)
-for message in st.session_state.memory["messages"]:
+# แสดงประวัติการคุยในแชทปัจจุบัน
+for message in current_chat["messages"]:
   avatar_icon = "👨" if message["role"] == "user" else "✨"
   with st.chat_message(message["role"], avatar=avatar_icon):
     st.markdown(message["content"])
 
-# 7. รับข้อความใหม่จากคุณพ่อ
+# รับข้อความใหม่จากคุณพ่อ
 if prompt := st.chat_input("ถามโมจิได้ทุกเรื่องเลยค่ะ..."):
-  st.session_state.memory["messages"].append(
-      {"role": "user", "content": prompt}
-  )
+  # อัปเดตชื่อแชทให้อัตโนมัติถ้าเป็นข้อความแรก
+  if not current_chat["messages"] or current_chat["title"] == "แชทใหม่":
+    current_chat["title"] = (
+        prompt[:18] + "..." if len(prompt) > 18 else prompt
+    )
+
+  current_chat["messages"].append({"role": "user", "content": prompt})
   save_memory(st.session_state.memory)
 
   with st.chat_message("user", avatar="👨"):
     st.markdown(prompt)
 
-  recent_messages = st.session_state.memory["messages"][-20:]
+  recent_messages = current_chat["messages"][-20:]
   api_messages = [{"role": "system", "content": system_instruction}]
   for m in recent_messages:
     api_messages.append({"role": m["role"], "content": m["content"]})
@@ -247,7 +357,6 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     message_placeholder = st.empty()
     full_response = ""
 
-    # ระบบสลับโมเดลสำรองอัตโนมัติ
     candidate_models = [
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant",
@@ -286,8 +395,7 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
       full_response = f"เกิดข้อผิดพลาดในการเชื่อมต่อโมเดล: {last_error}"
       message_placeholder.markdown(full_response)
 
-  # บันทึกคำตอบลงประวัติความจำถาวร
-  st.session_state.memory["messages"].append(
+  current_chat["messages"].append(
       {"role": "assistant", "content": full_response}
   )
   save_memory(st.session_state.memory)
