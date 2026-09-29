@@ -18,14 +18,12 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* พื้นหลังหลักสไตล์ Gemini (#131314) */
     .stApp {
         background-color: #131314 !important;
         color: #E3E3E3 !important;
         font-family: 'Google Sans', 'Kanit', 'Sarabun', sans-serif;
     }
     
-    /* แสดงและแต่งปุ่มเมนู 2-3 ขีด (Hamburger Menu) มุมซ้ายบน */
     header[data-testid="stHeader"] {
         background-color: transparent !important;
         z-index: 99999 !important;
@@ -42,7 +40,6 @@ st.markdown(
         box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
     }
     
-    /* หัวข้อหลักไล่เฉดสีเอกลักษณ์ Gemini (Blue-Purple-Pink) */
     .gemini-title {
         background: linear-gradient(90deg, #4285F4 0%, #9B72CB 50%, #D96570 100%);
         -webkit-background-clip: text;
@@ -62,7 +59,6 @@ st.markdown(
         margin-bottom: 20px;
     }
     
-    /* แถบ Sidebar สไตล์ Gemini (#1E1F20) */
     [data-testid="stSidebar"] {
         background-color: #1E1F20 !important;
         border-right: 1px solid #282A2C !important;
@@ -71,7 +67,6 @@ st.markdown(
         color: #E3E3E3 !important;
     }
     
-    /* ปุ่มกดใน Sidebar */
     .stButton > button {
         background-color: #282A2C !important;
         color: #E3E3E3 !important;
@@ -88,14 +83,12 @@ st.markdown(
         color: #FFFFFF !important;
     }
     
-    /* ช่องกรอกข้อความค้นหา */
     div[data-baseweb="input"] {
         background-color: #131314 !important;
         border-color: #444746 !important;
         border-radius: 20px !important;
     }
     
-    /* กล่องข้อความแชท สไตล์ Gemini Seamless */
     [data-testid="stChatMessage"] {
         background-color: transparent !important;
         border: none !important;
@@ -103,7 +96,6 @@ st.markdown(
         margin-bottom: 8px !important;
     }
 
-    /* บังคับสีตัวหนังสือในแชทให้ขาวสว่าง ชัดเจน 100% */
     [data-testid="stChatMessage"] p, 
     [data-testid="stChatMessage"] span, 
     [data-testid="stChatMessage"] div {
@@ -112,7 +104,6 @@ st.markdown(
         line-height: 1.6 !important;
     }
     
-    /* ช่องพิมพ์ข้อความด้านล่างทรงแคปซูลแบบ Gemini */
     .stChatInputContainer {
         border-radius: 28px !important;
         border: 1px solid #444746 !important;
@@ -182,6 +173,33 @@ def save_memory(data):
       json.dump(data, f, ensure_ascii=False, indent=2)
   except Exception as e:
     st.error(f"ไม่สามารถบันทึกความจำได้: {e}")
+
+
+# 🧠 ระบบดึงข้อมูลสำคัญเข้าความจำถาวรให้อัตโนมัติ
+def auto_extract_fact(user_text, client, memory):
+  try:
+    res = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{
+            "role": "user",
+            "content": (
+                "วิเคราะห์ว่าข้อความนี้เป็นการบอกข้อมูลส่วนตัว ตัวตน สิ่งที่ชอบ"
+                " หรือความลับของผู้ใช้หรือไม่ เช่น 'พ่อชอบสีม่วง',"
+                " 'พ่อชอบกินกาแฟดำ' หากใช่ ให้สรุปประโยคสั้นๆ 1 ประโยค เช่น"
+                " 'คุณพ่อชอบสีม่วง' หากไม่ใช่ข้อมูลส่วนตัวเลย ให้ตอบ 'NONE'"
+                f" ข้อความ: '{user_text}'"
+            ),
+        }],
+        temperature=0.1,
+    )
+    fact = res.choices[0].message.content.strip()
+    if fact and "NONE" not in fact and len(fact) < 60:
+      if fact not in memory["user_facts"]:
+        memory["user_facts"].append(fact)
+        return True
+  except Exception:
+    pass
+  return False
 
 
 if "memory" not in st.session_state:
@@ -278,11 +296,13 @@ with st.sidebar:
 
   st.divider()
 
-  with st.expander("🧠 เรื่องที่คุณพ่อให้โมจิจำ"):
+  with st.expander("🧠 ความจำถาวรของโมจิ (Auto)"):
     new_fact = st.text_input(
-        "เพิ่มข้อมูล:", placeholder="เช่น พ่อชอบกินกาแฟดำ", key="add_fact_input"
+        "เพิ่มข้อมูลเอง:",
+        placeholder="เช่น พ่อชอบกินกาแฟดำ",
+        key="add_fact_input",
     )
-    if st.button("➕ จำเรื่องนี้", use_container_width=True):
+    if st.button("➕ บันทึกเพิ่ม", use_container_width=True):
       if new_fact.strip():
         st.session_state.memory["user_facts"].append(new_fact.strip())
         save_memory(st.session_state.memory)
@@ -321,8 +341,9 @@ system_instruction = f"""
 - คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
 - น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
 - รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
+- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
 
-[ข้อมูลสำคัญที่คุณพ่อเคยบอกไว้ และน้องโมจิต้องจดจำให้แม่นยำ]:
+[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
 {facts_text}
 """
 
@@ -338,6 +359,23 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     )
 
   current_chat["messages"].append({"role": "user", "content": prompt})
+
+  # แอบสกัดความจำใหม่อัตโนมัติ
+  if auto_extract_fact(prompt, client, st.session_state.memory):
+    facts_text = "\n".join(
+        [f"- {fact}" for fact in st.session_state.memory["user_facts"]]
+    )
+    system_instruction = f"""
+คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
+- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
+- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
+- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
+- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
+
+[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
+{facts_text}
+"""
+
   save_memory(st.session_state.memory)
 
   with st.chat_message("user", avatar="👨"):
@@ -357,7 +395,6 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
         "llama-3.1-8b-instant",
         "mixtral-8x7b-32768",
         "gemma2-9b-it",
-        "openai/gpt-oss-20b",
     ]
 
     completion = None
