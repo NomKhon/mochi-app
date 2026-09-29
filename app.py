@@ -3,126 +3,135 @@ import os
 import streamlit as st
 from groq import Groq
 
-# 1. ตั้งค่าหน้าตาเบื้องต้น
+# 1. ตั้งค่าหน้าตาเบื้องต้นสไตล์ Gemini
 st.set_page_config(
-    page_title="น้องโมจิ (Mochi AI)",
-    page_icon="🎀",
+    page_title="Mochi AI",
+    page_icon="✨",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
 # ==========================================
-# 🎨 2. ตกแต่งความสวยงามแบบ Modern Dark UI
+# 🎨 2. Custom CSS ถอดแบบ Google Gemini
 # ==========================================
 st.markdown(
     """
     <style>
-    /* พื้นหลังหลักของแอป - Dark Premium Theme */
+    /* พื้นหลังหลักสไตล์ Gemini (#131314) */
     .stApp {
-        background-color: #0F172A !important;
-        color: #F8FAFC !important;
-        font-family: 'Kanit', 'Sarabun', sans-serif;
+        background-color: #131314 !important;
+        color: #E3E3E3 !important;
+        font-family: 'Google Sans', 'Kanit', 'Sarabun', sans-serif;
     }
     
-    /* หัวข้อหลักแบบ Gradient Glow */
-    .main-title {
-        background: linear-gradient(135deg, #F472B6 0%, #A855F7 100%);
+    /* หัวข้อหลักไล่เฉดสีเอกลักษณ์ Gemini (Blue-Purple-Pink) */
+    .gemini-title {
+        background: linear-gradient(90deg, #4285F4 0%, #9B72CB 50%, #D96570 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        font-weight: 800;
-        font-size: 2.2rem;
-        margin-bottom: 2px;
-        letter-spacing: 0.5px;
+        font-weight: 700;
+        font-size: 2.3rem;
+        margin-top: 10px;
+        margin-bottom: 4px;
+        letter-spacing: -0.5px;
     }
     
-    .sub-title {
-        color: #94A3B8 !important;
+    .gemini-subtitle {
+        color: #8E918F !important;
         text-align: center;
-        font-size: 0.85rem;
-        margin-bottom: 24px;
+        font-size: 0.9rem;
+        margin-bottom: 28px;
+        font-weight: 400;
     }
     
-    /* แถบ Sidebar ด้านข้าง */
+    /* แถบ Sidebar สไตล์ Gemini (#1E1F20) */
     [data-testid="stSidebar"] {
-        background-color: #1E293B !important;
-        border-right: 1px solid #334155 !important;
+        background-color: #1E1F20 !important;
+        border-right: 1px solid #282A2C !important;
     }
     [data-testid="stSidebar"] * {
-        color: #F8FAFC !important;
+        color: #E3E3E3 !important;
     }
     
-    /* ปุ่มกดสไตล์ Modern Neon */
+    /* ปุ่มกดสไตล์ Gemini (Dark Pill Button) */
     .stButton > button {
-        background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%) !important;
-        color: #FFFFFF !important;
-        border-radius: 14px !important;
-        border: none !important;
-        font-weight: 600 !important;
+        background-color: #282A2C !important;
+        color: #E3E3E3 !important;
+        border-radius: 20px !important;
+        border: 1px solid #444746 !important;
         padding: 8px 16px !important;
-        box-shadow: 0 4px 14px rgba(236, 72, 153, 0.3) !important;
-        transition: all 0.2s ease-in-out;
+        font-weight: 500 !important;
+        transition: all 0.2s ease;
         width: 100%;
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5) !important;
+        background-color: #37393B !important;
+        border-color: #A8C7FA !important;
+        color: #FFFFFF !important;
     }
     
     /* ช่องกรอกข้อความใน Sidebar */
     div[data-baseweb="input"] {
-        background-color: #0F172A !important;
-        border-color: #334155 !important;
+        background-color: #131314 !important;
+        border-color: #444746 !important;
         border-radius: 12px !important;
-        color: #FFFFFF !important;
     }
     
-    /* กล่องข้อความแชท (Chat Bubbles) */
+    /* กล่องข้อความแชท สไตล์ Gemini Seamless */
     [data-testid="stChatMessage"] {
-        background-color: #1E293B !important;
-        border: 1px solid #334155 !important;
-        border-radius: 18px !important;
-        padding: 14px 18px !important;
+        background-color: transparent !important;
+        border: none !important;
+        padding: 8px 0px !important;
         margin-bottom: 12px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     }
 
-    /* บังคับสีตัวหนังสือในกล่องแชตให้อ่านง่าย ชัดเจน 100% */
+    /* บังคับสีตัวหนังสือในแชทให้ขาวสว่าง ชัดเจน 100% */
     [data-testid="stChatMessage"] p, 
     [data-testid="stChatMessage"] span, 
     [data-testid="stChatMessage"] div {
-        color: #F8FAFC !important;
+        color: #E3E3E3 !important;
         font-size: 1.02rem !important;
         line-height: 1.6 !important;
     }
     
-    /* ปรับแต่งกล่องพิมพ์ข้อความด้านล่าง */
+    /* ช่องพิมพ์ข้อความด้านล่างทรงแคปซูลแบบ Gemini */
     .stChatInputContainer {
-        border-radius: 20px !important;
-        border: 1px solid #475569 !important;
-        background-color: #1E293B !important;
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+        border-radius: 28px !important;
+        border: 1px solid #444746 !important;
+        background-color: #1E1F20 !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        padding: 4px 8px !important;
+    }
+    
+    .stChatInputContainer:focus-within {
+        border-color: #A8C7FA !important;
     }
     
     .stChatInputContainer textarea {
-        color: #FFFFFF !important;
+        color: #E3E3E3 !important;
     }
     
-    /* ซ่อนลายน้ำ Streamlit */
+    .stChatInputContainer textarea::placeholder {
+        color: #8E918F !important;
+    }
+    
+    /* ซ่อนลายน้ำและส่วนเกินของ Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# แสดงหัวข้อแอปแบบไล่สีสวยงาม
+# แสดงหัวข้อ Gemini Style
 st.markdown(
-    '<h1 class="main-title">🎀 Mochi AI</h1>', unsafe_allow_html=True
+    '<h1 class="gemini-title">✨ Mochi AI</h1>', unsafe_allow_html=True
 )
 st.markdown(
-    '<p class="sub-title">ลูกสาวสุดน่ารักของคุณพ่อ • Private Assistant</p>',
+    '<p class="gemini-subtitle">สวัสดีค่ะคุณพ่อ มีอะไรให้โมจิช่วยไหมคะ?</p>',
     unsafe_allow_html=True,
 )
 
@@ -160,8 +169,8 @@ if "memory" not in st.session_state:
 
 # 4. แถบเมนูด้านข้าง (Sidebar) จัดการความจำ
 with st.sidebar:
-  st.header("🧠 สมองและความจำ")
-  st.caption("ระบบบันทึกความจำถาวรของน้องโมจิ")
+  st.header("🧠 ความจำของโมจิ")
+  st.caption("ระบบบันทึกความจำส่วนตัว")
 
   st.subheader("📌 เรื่องที่คุณพ่อให้โมจิจำ:")
   new_fact = st.text_input(
@@ -172,7 +181,7 @@ with st.sidebar:
     if new_fact.strip():
       st.session_state.memory["user_facts"].append(new_fact.strip())
       save_memory(st.session_state.memory)
-      st.success("น้องโมจิจำเรียบร้อยแล้วค่ะ! 🎀")
+      st.success("โมจิจำเรียบร้อยแล้วค่ะ ✨")
       st.rerun()
 
   # แสดงรายการสิ่งที่โมจิจำได้พร้อมปุ่มลบ
@@ -190,10 +199,10 @@ with st.sidebar:
   st.divider()
 
   # ปุ่มลบประวัติการคุยทั้งหมด
-  if st.button("🗑️️ ล้างประวัติการคุยทั้งหมด"):
+  if st.button("🗑 ล้างประวัติการคุยทั้งหมด"):
     st.session_state.memory["messages"] = []
     save_memory(st.session_state.memory)
-    st.success("ลบประวัติเรียบร้อยค่ะ!")
+    st.success("ล้างประวัติเรียบร้อยค่ะ!")
     st.rerun()
 
 # 5. กำหนดบุคลิกและใส่ข้อมูลความจำลงใน System Instruction
@@ -213,14 +222,14 @@ system_instruction = f"""
 {facts_text}
 """
 
-# 6. แสดงประวัติการคุยเก่าทั้งหมด
+# 6. แสดงประวัติการคุยเก่าทั้งหมด (ใช้ไอคอน ✨ แบบ Gemini)
 for message in st.session_state.memory["messages"]:
-  avatar_icon = "👨" if message["role"] == "user" else "🎀"
+  avatar_icon = "👨" if message["role"] == "user" else "✨"
   with st.chat_message(message["role"], avatar=avatar_icon):
     st.markdown(message["content"])
 
 # 7. รับข้อความใหม่จากคุณพ่อ
-if prompt := st.chat_input("พิมพ์คุยกับน้องโมจิที่นี่..."):
+if prompt := st.chat_input("ถามโมจิได้ทุกเรื่องเลยค่ะ..."):
   st.session_state.memory["messages"].append(
       {"role": "user", "content": prompt}
   )
@@ -234,7 +243,7 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
   for m in recent_messages:
     api_messages.append({"role": m["role"], "content": m["content"]})
 
-  with st.chat_message("assistant", avatar="🎀"):
+  with st.chat_message("assistant", avatar="✨"):
     message_placeholder = st.empty()
     full_response = ""
 
