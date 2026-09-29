@@ -390,12 +390,10 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     message_placeholder = st.empty()
     full_response = ""
 
-    # รายชื่อโมเดลล่าสุดของ Groq (ตัดโมเดลเก่าที่ยกเลิกแล้วออก)
+    # โมเดลหลักของ Groq ที่รองรับแน่นอน
     candidate_models = [
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant",
-        "llama3-70b-8192",
-        "llama3-8b-8192",
     ]
 
     completion = None
