@@ -25,12 +25,21 @@ st.markdown(
         font-family: 'Google Sans', 'Kanit', 'Sarabun', sans-serif;
     }
     
-    /* แต่งปุ่ม 2-3 ขีด (Hamburger Toggle) ด้านซ้ายบน */
+    /* แสดงและแต่งปุ่มเมนู 2-3 ขีด (Hamburger Menu) มุมซ้ายบน */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
+        z-index: 99999 !important;
+    }
+    
     [data-testid="collapsedControl"], [data-testid="stSidebarCollapseButton"] {
+        display: flex !important;
+        visibility: visible !important;
         color: #E3E3E3 !important;
         background-color: #1E1F20 !important;
+        border: 1px solid #444746 !important;
         border-radius: 50% !important;
-        padding: 4px !important;
+        padding: 6px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4) !important;
     }
     
     /* หัวข้อหลักไล่เฉดสีเอกลักษณ์ Gemini (Blue-Purple-Pink) */
@@ -41,7 +50,7 @@ st.markdown(
         text-align: center;
         font-weight: 700;
         font-size: 2.2rem;
-        margin-top: 5px;
+        margin-top: 0px;
         margin-bottom: 2px;
         letter-spacing: -0.5px;
     }
@@ -122,7 +131,6 @@ st.markdown(
     
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     </style>
 """,
     unsafe_allow_html=True,
@@ -135,13 +143,11 @@ client = Groq(api_key=GROQ_API_KEY)
 MEMORY_FILE = "mochi_memory.json"
 
 
-# ฟังก์ชันโหลดและปรับโครงสร้างระบบความจำหลายแชต
 def load_memory():
   if os.path.exists(MEMORY_FILE):
     try:
       with open(MEMORY_FILE, "r", encoding="utf-8") as f:
         data = json.load(f)
-        # ปรับโครงสร้างข้อมูลเก่าให้รองรับระบบหลายแชตอัตโนมัติ
         if "chats" not in data:
           old_messages = data.get("messages", [])
           default_id = str(uuid.uuid4())[:8]
@@ -162,7 +168,6 @@ def load_memory():
     except Exception:
       pass
 
-  # ถ้าไม่มีไฟล์ สร้างโครงสร้างใหม่
   default_id = str(uuid.uuid4())[:8]
   return {
       "user_facts": [],
@@ -182,7 +187,6 @@ def save_memory(data):
 if "memory" not in st.session_state:
   st.session_state.memory = load_memory()
 
-# ตรวจสอบความถูกต้องของ active chat
 chats_dict = st.session_state.memory.get("chats", {})
 if st.session_state.memory.get("current_chat_id") not in chats_dict:
   if chats_dict:
@@ -201,7 +205,6 @@ current_chat = st.session_state.memory["chats"][current_chat_id]
 # 4. แถบเมนูด้านข้าง (Sidebar) สไตล์ Gemini
 # ==========================================
 with st.sidebar:
-  # 1. ปุ่มแชทใหม่
   if st.button("➕  แชทใหม่", use_container_width=True):
     new_id = str(uuid.uuid4())[:8]
     st.session_state.memory["chats"][new_id] = {
@@ -214,7 +217,6 @@ with st.sidebar:
 
   st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
-  # 2. ช่องค้นหาแชท
   search_query = st.text_input(
       "🔍 ค้นหาแชท",
       placeholder="ค้นหาบทสนทนา...",
@@ -224,7 +226,6 @@ with st.sidebar:
   st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
   st.caption("🕒 ล่าสุด")
 
-  # 3. แสดงรายการแชทล่าสุด
   all_chats = st.session_state.memory["chats"]
   filtered_chats = {}
 
@@ -241,7 +242,6 @@ with st.sidebar:
   if not filtered_chats:
     st.caption("ไม่พบแชทที่ค้นหา")
   else:
-    # เรียงลำดับเอาแชทใหม่อยู่บนสุด
     for c_id in list(filtered_chats.keys())[::-1]:
       c_data = filtered_chats[c_id]
       title = c_data.get("title", "แชทใหม่")
@@ -278,7 +278,6 @@ with st.sidebar:
 
   st.divider()
 
-  # 4. ส่วนความจำถาวรของโมจิ
   with st.expander("🧠 เรื่องที่คุณพ่อให้โมจิจำ"):
     new_fact = st.text_input(
         "เพิ่มข้อมูล:", placeholder="เช่น พ่อชอบกินกาแฟดำ", key="add_fact_input"
@@ -311,7 +310,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# บุคลิกและจดจำข้อมูลสำคัญ
 facts_text = (
     "\n".join([f"- {fact}" for fact in st.session_state.memory["user_facts"]])
     if st.session_state.memory["user_facts"]
@@ -328,15 +326,12 @@ system_instruction = f"""
 {facts_text}
 """
 
-# แสดงประวัติการคุยในแชทปัจจุบัน
 for message in current_chat["messages"]:
   avatar_icon = "👨" if message["role"] == "user" else "✨"
   with st.chat_message(message["role"], avatar=avatar_icon):
     st.markdown(message["content"])
 
-# รับข้อความใหม่จากคุณพ่อ
 if prompt := st.chat_input("ถามโมจิได้ทุกเรื่องเลยค่ะ..."):
-  # อัปเดตชื่อแชทให้อัตโนมัติถ้าเป็นข้อความแรก
   if not current_chat["messages"] or current_chat["title"] == "แชทใหม่":
     current_chat["title"] = (
         prompt[:18] + "..." if len(prompt) > 18 else prompt
