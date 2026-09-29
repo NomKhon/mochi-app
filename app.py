@@ -41,9 +41,9 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
         message_placeholder = st.empty()
         full_response = ""
         try:
-            # ใช้โมเดล llama-3.1-8b-instant ที่รวดเร็ว เสถียร และเปิดใช้งานปัจจุบัน
+            # ใช้โมเดล llama3-8b-8192 เสถียรและตอบกลับเร็วที่สุด
             completion = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="llama3-8b-8192",
                 messages=api_messages,
                 temperature=0.7,
                 stream=True
