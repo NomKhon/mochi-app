@@ -41,9 +41,9 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
         message_placeholder = st.empty()
         full_response = ""
         try:
-            # ใช้โมเดลล่าสุด llama-3.3-70b-versatile
+            # ใช้โมเดล gemma2-9b-it ที่รวดเร็ว ตอบเสถียร ไม่โดนลบ
             completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="gemma2-9b-it",
                 messages=api_messages,
                 temperature=0.7,
                 stream=True
