@@ -127,11 +127,34 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 3. ใส่ Groq API Key
+# 3. ตั้งค่า Groq Client
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
 MEMORY_FILE = "mochi_memory.json"
+
+# รายชื่อโมเดลสำรองที่อัปเดตล่าสุด
+CANDIDATE_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.2-3b-preview",
+    "llama-3.2-1b-preview",
+    "qwen-2.5-coder-32b",
+]
+
+
+# ฟังก์ชันกลางสำหรับเรียกใช้งาน Groq API แบบสลับโมเดลอัตโนมัติ
+def call_groq_api(client, messages, temperature=0.7, stream=False):
+  last_err = None
+  for model_id in CANDIDATE_MODELS:
+    try:
+      res = client.chat.completions.create(
+          model=model_id, messages=messages, temperature=temperature, stream=stream
+      )
+      return res, None
+    except Exception as e:
+      last_err = e
+      continue
+  return None, last_err
 
 
 def load_memory():
@@ -178,25 +201,25 @@ def save_memory(data):
 # 🧠 ระบบดึงข้อมูลสำคัญเข้าความจำถาวรให้อัตโนมัติ
 def auto_extract_fact(user_text, client, memory):
   try:
-    res = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{
-            "role": "user",
-            "content": (
-                "วิเคราะห์ว่าข้อความนี้เป็นการบอกข้อมูลส่วนตัว ตัวตน สิ่งที่ชอบ"
-                " หรือความลับของผู้ใช้หรือไม่ เช่น 'พ่อชอบสีม่วง',"
-                " 'พ่อชอบกินกาแฟดำ' หากใช่ ให้สรุปประโยคสั้นๆ 1 ประโยค เช่น"
-                " 'คุณพ่อชอบสีม่วง' หากไม่ใช่ข้อมูลส่วนตัวเลย ให้ตอบ 'NONE'"
-                f" ข้อความ: '{user_text}'"
-            ),
-        }],
-        temperature=0.1,
+    messages = [{
+        "role": "user",
+        "content": (
+            "วิเคราะห์ว่าข้อความนี้เป็นการบอกข้อมูลส่วนตัว ตัวตน สิ่งที่ชอบ"
+            " หรือความลับของผู้ใช้หรือไม่ เช่น 'พ่อชอบสีม่วง',"
+            " 'พ่อชอบกินกาแฟดำ' หากใช่ ให้สรุปประโยคสั้นๆ 1 ประโยค เช่น"
+            " 'คุณพ่อชอบสีม่วง' หากไม่ใช่ข้อมูลส่วนตัวเลย ให้ตอบ 'NONE'"
+            f" ข้อความ: '{user_text}'"
+        ),
+    }]
+    res, err = call_groq_api(
+        client, messages, temperature=0.1, stream=False
     )
-    fact = res.choices[0].message.content.strip()
-    if fact and "NONE" not in fact and len(fact) < 60:
-      if fact not in memory["user_facts"]:
-        memory["user_facts"].append(fact)
-        return True
+    if res:
+      fact = res.choices[0].message.content.strip()
+      if fact and "NONE" not in fact and len(fact) < 60:
+        if fact not in memory["user_facts"]:
+          memory["user_facts"].append(fact)
+          return True
   except Exception:
     pass
   return False
@@ -390,27 +413,9 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
     message_placeholder = st.empty()
     full_response = ""
 
-    # โมเดลหลักของ Groq ที่รองรับแน่นอน
-    candidate_models = [
-        "llama-3.3-70b-versatile",
-        "llama-3.1-8b-instant",
-    ]
-
-    completion = None
-    last_error = None
-
-    for model_id in candidate_models:
-      try:
-        completion = client.chat.completions.create(
-            model=model_id,
-            messages=api_messages,
-            temperature=0.7,
-            stream=True,
-        )
-        break
-      except Exception as e:
-        last_error = e
-        continue
+    completion, last_error = call_groq_api(
+        client, api_messages, temperature=0.7, stream=True
+    )
 
     if completion:
       try:
