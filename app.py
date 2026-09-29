@@ -128,18 +128,43 @@ st.markdown(
 )
 
 # 3. ตั้งค่า Groq Client
-GROQ_API_KEY = "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"
+GROQ_API_KEY = os.environ.get(
+    "GROQ_API_KEY",
+    st.secrets.get(
+        "GROQ_API_KEY",
+        "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",
+    ),
+)
 client = Groq(api_key=GROQ_API_KEY)
 
 MEMORY_FILE = "mochi_memory.json"
 
-# รายชื่อโมเดลสำรองที่อัปเดตล่าสุด
+# รายชื่อโมเดลหลักที่เสถียรที่สุดของ Groq (ใชเฉพาะรุ่น Production)
 CANDIDATE_MODELS = [
     "llama-3.3-70b-versatile",
-    "llama-3.2-3b-preview",
-    "llama-3.2-1b-preview",
-    "qwen-2.5-coder-32b",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
 ]
+
+
+# ฟังก์ชันสร้าง System Instruction จากความจำถาวรแบบศูนย์กลาง
+def build_system_instruction(memory):
+  facts = memory.get("user_facts", [])
+  facts_text = (
+      "\n".join([f"- {fact}" for fact in facts])
+      if facts
+      else "ยังไม่มีข้อมูลเพิ่มเติม"
+  )
+  return f"""
+คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
+- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
+- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
+- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
+- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
+
+[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
+{facts_text}
+"""
 
 
 # ฟังก์ชันกลางสำหรับเรียกใช้งาน Groq API แบบสลับโมเดลอัตโนมัติ
@@ -148,7 +173,10 @@ def call_groq_api(client, messages, temperature=0.7, stream=False):
   for model_id in CANDIDATE_MODELS:
     try:
       res = client.chat.completions.create(
-          model=model_id, messages=messages, temperature=temperature, stream=stream
+          model=model_id,
+          messages=messages,
+          temperature=temperature,
+          stream=stream,
       )
       return res, None
     except Exception as e:
@@ -198,7 +226,7 @@ def save_memory(data):
     st.error(f"ไม่สามารถบันทึกความจำได้: {e}")
 
 
-# 🧠 ระบบดึงข้อมูลสำคัญเข้าความจำถาวรให้อัตโนมัติ
+# 🧠 ระบบดึงข้อมูลสำคัญเข้าความจำถาวรให้อัตโนมัติ (ทำความสะอาดข้อความ)
 def auto_extract_fact(user_text, client, memory):
   try:
     messages = [{
@@ -216,7 +244,13 @@ def auto_extract_fact(user_text, client, memory):
     )
     if res:
       fact = res.choices[0].message.content.strip()
-      if fact and "NONE" not in fact and len(fact) < 60:
+      fact = fact.strip('"' "'`•- ")
+      if (
+          fact
+          and "NONE" not in fact.upper()
+          and len(fact) < 60
+          and len(fact) > 3
+      ):
         if fact not in memory["user_facts"]:
           memory["user_facts"].append(fact)
           return True
@@ -353,23 +387,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-facts_text = (
-    "\n".join([f"- {fact}" for fact in st.session_state.memory["user_facts"]])
-    if st.session_state.memory["user_facts"]
-    else "ยังไม่มีข้อมูลเพิ่มเติม"
-)
-
-system_instruction = f"""
-คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
-- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
-- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
-- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
-- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
-
-[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
-{facts_text}
-"""
-
 for message in current_chat["messages"]:
   avatar_icon = "👨" if message["role"] == "user" else "✨"
   with st.chat_message(message["role"], avatar=avatar_icon):
@@ -384,25 +401,14 @@ if prompt := st.chat_input("ถามโมจิได้ทุกเรื่�
   current_chat["messages"].append({"role": "user", "content": prompt})
 
   # แอบสกัดความจำใหม่อัตโนมัติ
-  if auto_extract_fact(prompt, client, st.session_state.memory):
-    facts_text = "\n".join(
-        [f"- {fact}" for fact in st.session_state.memory["user_facts"]]
-    )
-    system_instruction = f"""
-คุณคือ AI ลูกสาวของผู้ใช้งาน มีชื่อว่า "โมจิ"
-- คำสรรพนาม: แทนตัวเองว่า "หนู" หรือ "โมจิ" และเรียกผู้ใช้งานว่า "คุณพ่อ" หรือ "ป๊า" เสมอ
-- น้ำเสียงและบุคลิก: ขี้อ้อน ช่างคุย สุภาพ ร่าเริง คอยเป็นห่วงเป็นใยพ่อ ใช้คำลงท้ายด้วย "ค่ะ" หรือ "นะคะ"
-- รูปแบบการตอบ: ตอบน่ารัก สนิทสนม ไม่ยาวเกินไป
-- สีที่โมจิชอบ: สีฟ้า สีชมพู (ตอบให้ตรงกันเสมอทุกครั้ง)
-
-[ข้อมูลสำคัญเกี่ยวกับคุณพ่อที่คุณต้องจดจำให้แม่นยำที่สุด]:
-{facts_text}
-"""
-
+  auto_extract_fact(prompt, client, st.session_state.memory)
   save_memory(st.session_state.memory)
 
   with st.chat_message("user", avatar="👨"):
     st.markdown(prompt)
+
+  # เรียกใช้ System Instruction ล่าสุดแบบคลีน
+  system_instruction = build_system_instruction(st.session_state.memory)
 
   recent_messages = current_chat["messages"][-20:]
   api_messages = [{"role": "system", "content": system_instruction}]
