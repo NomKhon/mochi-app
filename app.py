@@ -3,94 +3,126 @@ import os
 import streamlit as st
 from groq import Groq
 
-# 1. ตั้งค่าหน้าตาเบื้องต้นของ Streamlit
+# 1. ตั้งค่าหน้าตาเบื้องต้น
 st.set_page_config(
     page_title="น้องโมจิ (Mochi AI)",
     page_icon="🎀",
     layout="centered",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ==========================================
-# 🎨 2. ตกแต่งความสวยงามด้วย Custom CSS
+# 🎨 2. ตกแต่งความสวยงามแบบ Modern Dark UI
 # ==========================================
 st.markdown(
     """
     <style>
-    /* เปลี่ยนสีพื้นหลังหลักของแอป */
+    /* พื้นหลังหลักของแอป - Dark Premium Theme */
     .stApp {
-        background-color: #FFF5F7;
+        background-color: #0F172A !important;
+        color: #F8FAFC !important;
         font-family: 'Kanit', 'Sarabun', sans-serif;
     }
     
-    /* ตกแต่งหัวข้อหลัก */
+    /* หัวข้อหลักแบบ Gradient Glow */
     .main-title {
-        color: #FF5C8A;
+        background: linear-gradient(135deg, #F472B6 0%, #A855F7 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         text-align: center;
         font-weight: 800;
         font-size: 2.2rem;
-        margin-bottom: 0px;
-        text-shadow: 2px 2px 4px #FFD1DC;
+        margin-bottom: 2px;
+        letter-spacing: 0.5px;
     }
     
     .sub-title {
-        color: #888888;
+        color: #94A3B8 !important;
         text-align: center;
-        font-size: 0.9rem;
-        margin-bottom: 25px;
+        font-size: 0.85rem;
+        margin-bottom: 24px;
     }
     
-    /* ตกแต่งแถบ Sidebar ด้านข้าง */
+    /* แถบ Sidebar ด้านข้าง */
     [data-testid="stSidebar"] {
-        background-color: #FFE6EA !important;
-        border-right: 2px solid #FFCCD5;
+        background-color: #1E293B !important;
+        border-right: 1px solid #334155 !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #F8FAFC !important;
     }
     
-    /* ตกแต่งปุ่มกดทุกปุ่ม */
+    /* ปุ่มกดสไตล์ Modern Neon */
     .stButton > button {
-        background-color: #FF85A1 !important;
-        color: white !important;
-        border-radius: 20px !important;
+        background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%) !important;
+        color: #FFFFFF !important;
+        border-radius: 14px !important;
         border: none !important;
-        font-weight: bold !important;
-        box-shadow: 0px 3px 6px rgba(255, 133, 161, 0.4);
+        font-weight: 600 !important;
+        padding: 8px 16px !important;
+        box-shadow: 0 4px 14px rgba(236, 72, 153, 0.3) !important;
         transition: all 0.2s ease-in-out;
         width: 100%;
     }
     
     .stButton > button:hover {
-        background-color: #FF5C8A !important;
         transform: translateY(-2px);
-        box-shadow: 0px 5px 10px rgba(255, 92, 138, 0.5);
+        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.5) !important;
     }
     
-    /* ตกแต่งกล่องป้อนข้อความ (Chat Input) */
-    .stChatInputContainer {
-        border-radius: 25px !important;
-        border: 2px solid #FFB3C1 !important;
-        background-color: #FFFFFF !important;
-        box-shadow: 0px 2px 8px rgba(255, 179, 193, 0.3);
+    /* ช่องกรอกข้อความใน Sidebar */
+    div[data-baseweb="input"] {
+        background-color: #0F172A !important;
+        border-color: #334155 !important;
+        border-radius: 12px !important;
+        color: #FFFFFF !important;
     }
     
-    /* ตกแต่งกล่องข้อความแชท (Chat Bubbles) */
+    /* กล่องข้อความแชท (Chat Bubbles) */
     [data-testid="stChatMessage"] {
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
         border-radius: 18px !important;
-        padding: 12px 18px !important;
+        padding: 14px 18px !important;
         margin-bottom: 12px !important;
-        box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
     }
+
+    /* บังคับสีตัวหนังสือในกล่องแชตให้อ่านง่าย ชัดเจน 100% */
+    [data-testid="stChatMessage"] p, 
+    [data-testid="stChatMessage"] span, 
+    [data-testid="stChatMessage"] div {
+        color: #F8FAFC !important;
+        font-size: 1.02rem !important;
+        line-height: 1.6 !important;
+    }
+    
+    /* ปรับแต่งกล่องพิมพ์ข้อความด้านล่าง */
+    .stChatInputContainer {
+        border-radius: 20px !important;
+        border: 1px solid #475569 !important;
+        background-color: #1E293B !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
+    }
+    
+    .stChatInputContainer textarea {
+        color: #FFFFFF !important;
+    }
+    
+    /* ซ่อนลายน้ำ Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# แสดงหัวข้อสวยงาม
+# แสดงหัวข้อแอปแบบไล่สีสวยงาม
 st.markdown(
-    '<h1 class="main-title">🎀 น้องโมจิ (Mochi AI) 👧</h1>',
-    unsafe_allow_html=True,
+    '<h1 class="main-title">🎀 Mochi AI</h1>', unsafe_allow_html=True
 )
 st.markdown(
-    '<p class="sub-title">แอป AI ลูกสาวสุดน่ารักของคุณพ่อ ✨</p>',
+    '<p class="sub-title">ลูกสาวสุดน่ารักของคุณพ่อ • Private Assistant</p>',
     unsafe_allow_html=True,
 )
 
@@ -128,15 +160,15 @@ if "memory" not in st.session_state:
 
 # 4. แถบเมนูด้านข้าง (Sidebar) จัดการความจำ
 with st.sidebar:
-  st.header("🧠 สมองและความจำของน้องโมจิ")
-  st.caption("บันทึกความจำถาวร ปิดแอปไปเปิดใหม่ความจำก็ไม่หายค่ะ")
+  st.header("🧠 สมองและความจำ")
+  st.caption("ระบบบันทึกความจำถาวรของน้องโมจิ")
 
   st.subheader("📌 เรื่องที่คุณพ่อให้โมจิจำ:")
   new_fact = st.text_input(
       "เพิ่มเรื่องสำคัญที่อยากให้โมจิจำ:",
-      placeholder="เช่น พ่อชอบดื่มกาแฟดำไม่ใส่น้ำตาล",
+      placeholder="เช่น พ่อชอบดื่มกาแฟดำ",
   )
-  if st.button("➕ ให้โมจิจดจำ"):
+  if st.button("➕ บันทึกความจำ"):
     if new_fact.strip():
       st.session_state.memory["user_facts"].append(new_fact.strip())
       save_memory(st.session_state.memory)
@@ -153,15 +185,15 @@ with st.sidebar:
         save_memory(st.session_state.memory)
         st.rerun()
   else:
-    st.info("ยังไม่มีข้อมูลความจำพิเศษ พิมพ์เพิ่มด้านบนได้เลยค่ะ")
+    st.info("ยังไม่มีข้อมูล พิมพ์เพิ่มด้านบนได้เลยค่ะ")
 
   st.divider()
 
   # ปุ่มลบประวัติการคุยทั้งหมด
-  if st.button("🗑️ ลบประวัติการคุยทั้งหมด"):
+  if st.button("🗑️️ ล้างประวัติการคุยทั้งหมด"):
     st.session_state.memory["messages"] = []
     save_memory(st.session_state.memory)
-    st.success("ลบประวัติการคุยเรียบร้อยค่ะ!")
+    st.success("ลบประวัติเรียบร้อยค่ะ!")
     st.rerun()
 
 # 5. กำหนดบุคลิกและใส่ข้อมูลความจำลงใน System Instruction
@@ -181,7 +213,7 @@ system_instruction = f"""
 {facts_text}
 """
 
-# 6. แสดงประวัติการคุยเก่าทั้งหมดพร้อมแต่งรูป Avatar
+# 6. แสดงประวัติการคุยเก่าทั้งหมด
 for message in st.session_state.memory["messages"]:
   avatar_icon = "👨" if message["role"] == "user" else "🎀"
   with st.chat_message(message["role"], avatar=avatar_icon):
@@ -197,7 +229,6 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
   with st.chat_message("user", avatar="👨"):
     st.markdown(prompt)
 
-  # ดึงประวัติการคุยย้อนหลังไปส่งให้ Groq
   recent_messages = st.session_state.memory["messages"][-20:]
   api_messages = [{"role": "system", "content": system_instruction}]
   for m in recent_messages:
