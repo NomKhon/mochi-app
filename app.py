@@ -40,21 +40,46 @@ if prompt := st.chat_input("พิมพ์คุยกับน้องโม�
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        try:
-            # ใช้โมเดล gemma2-9b-it ที่รวดเร็ว ตอบเสถียร ไม่โดนลบ
-            completion = client.chat.completions.create(
-                model="gemma2-9b-it",
-                messages=api_messages,
-                temperature=0.7,
-                stream=True
-            )
-            for chunk in completion:
-                content = chunk.choices[0].delta.content or ""
-                full_response += content
-                message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
-        except Exception as e:
-            full_response = f"เกิดข้อผิดพลาด: {e}"
+        
+        # รายชื่อโมเดลสำรอง (ระบบจะลองใช้ทีละตัวอัตโนมัติ)
+        candidate_models = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
+            "gemma2-9b-it",
+            "openai/gpt-oss-20b"
+        ]
+        
+        completion = None
+        last_error = None
+        
+        # ลองเรียกโมเดลทีละตัวจนกว่าจะเจอตัวที่ใช้งานได้
+        for model_id in candidate_models:
+            try:
+                completion = client.chat.completions.create(
+                    model=model_id,
+                    messages=api_messages,
+                    temperature=0.7,
+                    stream=True
+                )
+                break
+            except Exception as e:
+                last_error = e
+                continue
+
+        # หากมีโมเดลที่ใช้งานได้สำเร็จ ให้ประมวลผลคำตอบ
+        if completion:
+            try:
+                for chunk in completion:
+                    content = chunk.choices[0].delta.content or ""
+                    full_response += content
+                    message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response)
+            except Exception as e:
+                full_response = f"เกิดข้อผิดพลาดขณะอ่านข้อมูล: {e}"
+                message_placeholder.markdown(full_response)
+        else:
+            full_response = f"เกิดข้อผิดพลาดในการเชื่อมต่อโมเดล: {last_error}"
             message_placeholder.markdown(full_response)
 
     st.session_state.messages.append({"role": "assistant", "content": full_response})
